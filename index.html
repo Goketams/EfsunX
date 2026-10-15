@@ -1200,5 +1200,104 @@ initMenu();
 requestAnimationFrame(frame);
 })();
 </script>
-</body>
+</body><!-- Sohbet ve Oyuncu Alanı -->
+<div id="game-container" style="position: relative; width: 100vw; height: 100vh; background: #222; overflow: hidden;">
+    
+    <!-- Canlı Chat Kutusu (Sol Altta) -->
+    <div id="chat-box" style="position: absolute; bottom: 20px; left: 20px; width: 300px; height: 150px; background: rgba(0,0,0,0.6); color: white; border: 1px solid #444; padding: 10px; display: flex; flex-direction: column; z-index: 999;">
+        <div id="chat-messages" style="flex: 1; overflow-y: auto; font-size: 14px; margin-bottom: 5px;"></div>
+        <div style="display: flex;">
+            <input type="text" id="chat-input" placeholder="Mesaj yaz..." style="flex: 1; padding: 5px;" />
+            <button id="chat-send" style="padding: 5px;">Gönder</button>
+        </div>
+    </div>
+</div>
+
+<!-- Socket.io Kütüphanesi ve Oyun Mantığı -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const socket = io('https://efsunx-server.onrender.com');
+  
+  const digerOyuncular = {};
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const chatSend = document.getElementById('chat-send');
+
+  // Rastgele bir oyuncu adı belirleyelim (veya sen inputtan alabilirsin)
+  const playerName = "Savaşçı_" + Math.floor(Math.random() * 1000);
+
+  // 1. Diğer oyuncuları yükle
+  socket.on('mevcut-oyuncular', (players) => {
+    for (let id in players) {
+      if (id !== socket.id) {
+        oyuncuOlustur(players[id]);
+      }
+    }
+  });
+
+  socket.on('yeni-oyuncu', (player) => {
+    oyuncuOlustur(player);
+  });
+
+  // 2. Oyuncu konum güncellemelerini al
+  socket.on('oyuncu-konum-guncelle', (player) => {
+    let el = document.getElementById('player-' + player.id);
+    if (el) {
+      el.style.left = player.x + 'px';
+      el.style.top = player.y + 'px';
+    }
+  });
+
+  socket.on('oyuncu-ayrildi', (id) => {
+    let el = document.getElementById('player-' + id);
+    if (el) el.remove();
+  });
+
+  // Karakteri ekranda görsel olarak oluşturan fonksiyon
+  function oyuncuOlustur(player) {
+    let div = document.createElement('div');
+    div.id = 'player-' + player.id;
+    div.style.position = 'absolute';
+    div.style.width = '30px';
+    div.style.height = '30px';
+    div.style.backgroundColor = 'red'; // Diğer oyuncular kırmızı kutu olsun
+    div.style.left = player.x + 'px';
+    div.style.top = player.y + 'px';
+    div.innerText = player.name;
+    div.style.fontSize = '10px';
+    div.style.color = 'white';
+    document.getElementById('game-container').appendChild(div);
+    digerOyuncular[player.id] = div;
+  }
+
+  // Kendi karakterimizi hareket ettirme (Örn: Fareye tıklanan yere gitme veya yön tuşları)
+  window.addEventListener('mousemove', (e) => {
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Sunucuya yeni konumumuzu gönderelim
+    socket.emit('oyuncu-hareket', { x, y });
+  });
+
+  // 3. Chat Sistemi
+  chatSend.addEventListener('click', mesajGonder);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') mesajGonder();
+  });
+
+  function mesajGonder() {
+    let mesaj = chatInput.value.trim();
+    if (mesaj !== '') {
+      socket.emit('chat-mesaji', { name: playerName, mesaj: mesaj });
+      chatInput.value = '';
+    }
+  }
+
+  socket.on('chat-mesaji', (data) => {
+    let p = document.createElement('div');
+    p.innerText = `${data.name}: ${data.mesaj}`;
+    chatMessages.appendChild(p);
+    chatMessages.scrollTop = chatMessages.scrollHeight; // Otomatik aşağı kaydır
+  });
+</script>
 </html>
