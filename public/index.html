@@ -1200,5 +1200,15 @@ initMenu();
 requestAnimationFrame(frame);
 })();
 </script>
-</body>
+</body><!-- 1. Socket.io Kütüphanesi -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<!-- 2. Render Sunucuna Bağlantı -->
+<script>
+  const socket = io('https://efsunx-server.onrender.com');
+  
+  socket.on('connect', () => {
+    console.log('Sunucuya başarıyla bağlandık! ID:', socket.id);
+  });
+</script>
 </html>
